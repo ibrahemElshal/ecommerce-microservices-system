@@ -1,0 +1,773 @@
+{
+  "info": {
+    "_postman_id": "ecom-apis-collection",
+    "name": "Ecommerce Microservices APIs",
+    "description": "HTTP APIs for every service in this project.\n\n**How to use**\n1. Import this collection and `Ecommerce-Local.postman_environment.json`.\n2. Select the **Ecommerce Local** environment.\n3. Run **End-to-End Flow** first (creates a customer, then order), or hit services directly.\n\n**Service ports**\n- Gateway: 8222\n- Config server: 8888\n- Discovery (Eureka): 8761\n- Customer: 8090 (`/api/v1/customer`)\n- Product: 8050 (`/api/v1/products`)\n- Order: 8070 (`/api/v1/orders`, `/api/v1/order-lines`)\n- Payment: 8060 (`/api/v1/payments`)\n- Notification: Kafka consumer only — no REST API\n\n**Gateway notes**\n- Customer controller is singular (`/api/v1/customer`) but the gateway route is `/api/v1/customers/**`.\n- Order-lines gateway route currently points at CUSTOMER-SERVICE.\n- Discovery locator is enabled, so `/customer-service/...` style paths may also work.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "gatewayUrl", "value": "http://localhost:8222" },
+    { "key": "configUrl", "value": "http://localhost:8888" },
+    { "key": "discoveryUrl", "value": "http://localhost:8761" },
+    { "key": "customerUrl", "value": "http://localhost:8090" },
+    { "key": "productUrl", "value": "http://localhost:8050" },
+    { "key": "orderUrl", "value": "http://localhost:8070" },
+    { "key": "paymentUrl", "value": "http://localhost:8060" },
+    { "key": "customerId", "value": "" },
+    { "key": "productId", "value": "1" },
+    { "key": "categoryId", "value": "1" },
+    { "key": "orderId", "value": "1" },
+    { "key": "orderReference", "value": "ORD-001" }
+  ],
+  "item": [
+    {
+      "name": "01. Infrastructure",
+      "item": [
+        {
+          "name": "Config Server",
+          "item": [
+            {
+              "name": "Get customer-service config",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{configUrl}}/customer-service/default",
+                "description": "Native Spring Cloud Config: GET /{application}/{profile}"
+              }
+            },
+            {
+              "name": "Get product-service config",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{configUrl}}/product-service/default"
+              }
+            },
+            {
+              "name": "Get order-service config",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{configUrl}}/order-service/default"
+              }
+            },
+            {
+              "name": "Get payment-service config",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{configUrl}}/payment-service/default"
+              }
+            },
+            {
+              "name": "Get notification-service config",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{configUrl}}/notification-service/default"
+              }
+            },
+            {
+              "name": "Get gateway-service config",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{configUrl}}/gateway-service/default"
+              }
+            },
+            {
+              "name": "Get discovery-service config",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{configUrl}}/discovery-service/default"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Discovery (Eureka)",
+          "item": [
+            {
+              "name": "Eureka dashboard",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{discoveryUrl}}/"
+              }
+            },
+            {
+              "name": "Registered applications (XML)",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Accept", "value": "application/xml" }],
+                "url": "{{discoveryUrl}}/eureka/apps"
+              }
+            },
+            {
+              "name": "Registered applications (JSON)",
+              "request": {
+                "method": "GET",
+                "header": [{ "key": "Accept", "value": "application/json" }],
+                "url": "{{discoveryUrl}}/eureka/apps"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02. Customer Service",
+      "item": [
+        {
+          "name": "Create customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const id = pm.response.text().replaceAll('\"', '').trim();",
+                  "if (id) {",
+                  "  pm.collectionVariables.set('customerId', id);",
+                  "  pm.environment.set('customerId', id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Ada\",\n  \"lastName\": \"Lovelace\",\n  \"email\": \"ada.lovelace@example.com\",\n  \"address\": {\n    \"street\": \"Analytical Engine Way\",\n    \"houseNumber\": \"12A\",\n    \"zipCode\": \"10001\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{customerUrl}}/api/v1/customer",
+            "description": "POST /api/v1/customer — returns the created customer id as a string."
+          }
+        },
+        {
+          "name": "Update customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 202', () => pm.response.to.have.status(202));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"id\": \"{{customerId}}\",\n  \"firstName\": \"Ada\",\n  \"lastName\": \"Byron\",\n  \"email\": \"ada.byron@example.com\",\n  \"address\": {\n    \"street\": \"Analytical Engine Way\",\n    \"houseNumber\": \"12B\",\n    \"zipCode\": \"10001\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{customerUrl}}/api/v1/customer",
+            "description": "PUT /api/v1/customer — 202 Accepted."
+          }
+        },
+        {
+          "name": "Find all customers",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Body is an array', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{customerUrl}}/api/v1/customer"
+          }
+        },
+        {
+          "name": "Find customer by id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{customerUrl}}/api/v1/customer/{{customerId}}",
+            "description": "GET /api/v1/customer/{customerId}"
+          }
+        },
+        {
+          "name": "Customer exists by id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{customerUrl}}/api/v1/customer/exist/{{customerId}}",
+            "description": "GET /api/v1/customer/exist/{customerId} — returns boolean."
+          }
+        },
+        {
+          "name": "Delete customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 202', () => pm.response.to.have.status(202));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{customerUrl}}/api/v1/customer/{{customerId}}",
+            "description": "DELETE /api/v1/customer/{customerId} — 202 Accepted. Run this last if you still need the customer for orders."
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. Product Service",
+      "item": [
+        {
+          "name": "Create product",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const id = pm.response.text().trim();",
+                  "if (id) {",
+                  "  pm.collectionVariables.set('productId', id);",
+                  "  pm.environment.set('productId', id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"USB-C Hub\",\n  \"description\": \"7-in-1 USB-C docking hub\",\n  \"price\": 59.99,\n  \"availableQuantity\": 40,\n  \"categoryId\": {{categoryId}}\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{productUrl}}/api/v1/products",
+            "description": "POST /api/v1/products — returns the new product id. Seeded categories typically start at id 1 (Electronics)."
+          }
+        },
+        {
+          "name": "Purchase products",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "[\n  {\n    \"productId\": {{productId}},\n    \"quantity\": 1\n  }\n]",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{productUrl}}/api/v1/products/purchase",
+            "description": "POST /api/v1/products/purchase — decreases available quantity. Prefer the order flow so stock is not decremented twice."
+          }
+        },
+        {
+          "name": "Find product by id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{productUrl}}/api/v1/products/{{productId}}"
+          }
+        },
+        {
+          "name": "Find all products",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const products = pm.response.json();",
+                  "pm.test('Body is an array', () => pm.expect(products).to.be.an('array'));",
+                  "if (Array.isArray(products) && products.length > 0) {",
+                  "  pm.collectionVariables.set('productId', String(products[0].id));",
+                  "  pm.environment.set('productId', String(products[0].id));",
+                  "  if (products[0].categoryId) {",
+                  "    pm.collectionVariables.set('categoryId', String(products[0].categoryId));",
+                  "    pm.environment.set('categoryId', String(products[0].categoryId));",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{productUrl}}/api/v1/products"
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. Order Service",
+      "item": [
+        {
+          "name": "Create order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const id = pm.response.text().trim();",
+                  "if (id) {",
+                  "  pm.collectionVariables.set('orderId', id);",
+                  "  pm.environment.set('orderId', id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reference\": \"{{orderReference}}\",\n  \"totalAmount\": 999.99,\n  \"paymentMethod\": \"PAYPAL\",\n  \"customerId\": \"{{customerId}}\",\n  \"products\": [\n    {\n      \"productId\": {{productId}},\n      \"quantity\": 1\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{orderUrl}}/api/v1/orders",
+            "description": "POST /api/v1/orders\nRequires an existing customerId. Calls product purchase and payment internally.\nPaymentMethod: CASH | CREDIT_CARD | PAYPAL | VISA | MASTERCARD"
+          }
+        },
+        {
+          "name": "Find all orders",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const orders = pm.response.json();",
+                  "if (Array.isArray(orders) && orders.length > 0) {",
+                  "  pm.collectionVariables.set('orderId', String(orders[0].id));",
+                  "  pm.environment.set('orderId', String(orders[0].id));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{orderUrl}}/api/v1/orders"
+          }
+        },
+        {
+          "name": "Find order by id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{orderUrl}}/api/v1/orders/{{orderId}}"
+          }
+        },
+        {
+          "name": "Find order lines by order id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{orderUrl}}/api/v1/order-lines/order/{{orderId}}",
+            "description": "GET /api/v1/order-lines/order/{order-id}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "05. Payment Service",
+      "item": [
+        {
+          "name": "Create payment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": 999.99,\n  \"paymentMethod\": \"PAYPAL\",\n  \"orderId\": {{orderId}},\n  \"orderRefrence\": \"{{orderReference}}\",\n  \"customer\": {\n    \"id\": \"{{customerId}}\",\n    \"firstName\": \"Ada\",\n    \"lastName\": \"Lovelace\",\n    \"email\": \"ada.lovelace@example.com\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{paymentUrl}}/api/v1/payments",
+            "description": "POST /api/v1/payments\nField name in the payment service is `orderRefrence` (typo in the record).\nCreating an order already calls this internally; use this to test the payment service directly."
+          }
+        }
+      ]
+    },
+    {
+      "name": "06. Via API Gateway",
+      "item": [
+        {
+          "name": "Customer (controller path)",
+          "item": [
+            {
+              "name": "Create customer",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"firstName\": \"Grace\",\n  \"lastName\": \"Hopper\",\n  \"email\": \"grace.hopper@example.com\",\n  \"address\": {\n    \"street\": \"Compiler Blvd\",\n    \"houseNumber\": \"1\",\n    \"zipCode\": \"20001\"\n  }\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": "{{gatewayUrl}}/api/v1/customer",
+                "description": "Uses the controller path. Gateway route is configured as /api/v1/customers/** so this may 404 unless discovery locator matches it."
+              }
+            },
+            {
+              "name": "Find all customers",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{gatewayUrl}}/api/v1/customer"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Customer (gateway route path)",
+          "item": [
+            {
+              "name": "Create customer (/customers)",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"firstName\": \"Grace\",\n  \"lastName\": \"Hopper\",\n  \"email\": \"grace.hopper@example.com\",\n  \"address\": {\n    \"street\": \"Compiler Blvd\",\n    \"houseNumber\": \"1\",\n    \"zipCode\": \"20001\"\n  }\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": "{{gatewayUrl}}/api/v1/customers",
+                "description": "Matches gateway predicate Path=/api/v1/customers/**. Downstream controller is /api/v1/customer so this may still fail after routing."
+              }
+            },
+            {
+              "name": "Find all customers (/customers)",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{gatewayUrl}}/api/v1/customers"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Product",
+          "item": [
+            {
+              "name": "Find all products",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{gatewayUrl}}/api/v1/products"
+              }
+            },
+            {
+              "name": "Find product by id",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{gatewayUrl}}/api/v1/products/{{productId}}"
+              }
+            },
+            {
+              "name": "Create product",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"USB-C Hub\",\n  \"description\": \"7-in-1 USB-C docking hub\",\n  \"price\": 59.99,\n  \"availableQuantity\": 40,\n  \"categoryId\": {{categoryId}}\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": "{{gatewayUrl}}/api/v1/products"
+              }
+            },
+            {
+              "name": "Purchase products",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "[\n  {\n    \"productId\": {{productId}},\n    \"quantity\": 1\n  }\n]",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": "{{gatewayUrl}}/api/v1/products/purchase"
+              }
+            }
+          ]
+        },
+        {
+          "name": "Order",
+          "item": [
+            {
+              "name": "Create order",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"reference\": \"{{orderReference}}\",\n  \"totalAmount\": 999.99,\n  \"paymentMethod\": \"PAYPAL\",\n  \"customerId\": \"{{customerId}}\",\n  \"products\": [\n    {\n      \"productId\": {{productId}},\n      \"quantity\": 1\n    }\n  ]\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": "{{gatewayUrl}}/api/v1/orders"
+              }
+            },
+            {
+              "name": "Find all orders",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{gatewayUrl}}/api/v1/orders"
+              }
+            },
+            {
+              "name": "Find order by id",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{gatewayUrl}}/api/v1/orders/{{orderId}}"
+              }
+            },
+            {
+              "name": "Find order lines by order id",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": "{{gatewayUrl}}/api/v1/order-lines/order/{{orderId}}",
+                "description": "Gateway currently routes /api/v1/order-lines/** to CUSTOMER-SERVICE. Prefer the direct order service request if this fails."
+              }
+            }
+          ]
+        },
+        {
+          "name": "Payment",
+          "item": [
+            {
+              "name": "Create payment",
+              "request": {
+                "method": "POST",
+                "header": [{ "key": "Content-Type", "value": "application/json" }],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"amount\": 999.99,\n  \"paymentMethod\": \"PAYPAL\",\n  \"orderId\": {{orderId}},\n  \"orderRefrence\": \"{{orderReference}}\",\n  \"customer\": {\n    \"id\": \"{{customerId}}\",\n    \"firstName\": \"Ada\",\n    \"lastName\": \"Lovelace\",\n    \"email\": \"ada.lovelace@example.com\"\n  }\n}",
+                  "options": { "raw": { "language": "json" } }
+                },
+                "url": "{{gatewayUrl}}/api/v1/payments"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07. End-to-End Flow",
+      "description": "Run this folder in order with Collection Runner. Creates a customer, loads a product, places an order, then reads order and order-lines.",
+      "item": [
+        {
+          "name": "1. Create customer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const id = pm.response.text().replaceAll('\"', '').trim();",
+                  "pm.collectionVariables.set('customerId', id);",
+                  "pm.environment.set('customerId', id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Ada\",\n  \"lastName\": \"Lovelace\",\n  \"email\": \"ada.{{$timestamp}}@example.com\",\n  \"address\": {\n    \"street\": \"Analytical Engine Way\",\n    \"houseNumber\": \"12A\",\n    \"zipCode\": \"10001\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{customerUrl}}/api/v1/customer"
+          }
+        },
+        {
+          "name": "2. Find all products",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const products = pm.response.json();",
+                  "pm.test('At least one product exists', () => pm.expect(products.length).to.be.above(0));",
+                  "pm.collectionVariables.set('productId', String(products[0].id));",
+                  "pm.environment.set('productId', String(products[0].id));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{productUrl}}/api/v1/products"
+          }
+        },
+        {
+          "name": "3. Create order",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const ref = 'ORD-' + Date.now();",
+                  "pm.collectionVariables.set('orderReference', ref);",
+                  "pm.environment.set('orderReference', ref);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200', () => pm.response.to.have.status(200));",
+                  "const id = pm.response.text().trim();",
+                  "pm.collectionVariables.set('orderId', id);",
+                  "pm.environment.set('orderId', id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reference\": \"{{orderReference}}\",\n  \"totalAmount\": 999.99,\n  \"paymentMethod\": \"PAYPAL\",\n  \"customerId\": \"{{customerId}}\",\n  \"products\": [\n    {\n      \"productId\": {{productId}},\n      \"quantity\": 1\n    }\n  ]\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{orderUrl}}/api/v1/orders"
+          }
+        },
+        {
+          "name": "4. Find order by id",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{orderUrl}}/api/v1/orders/{{orderId}}"
+          }
+        },
+        {
+          "name": "5. Find order lines",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": ["pm.test('Status is 200', () => pm.response.to.have.status(200));"]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{orderUrl}}/api/v1/order-lines/order/{{orderId}}"
+          }
+        }
+      ]
+    }
+  ]
+}

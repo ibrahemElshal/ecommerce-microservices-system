@@ -1,0 +1,13 @@
+spring:
+  config:
+    import: optional:configserver:http://localhost:8888
+  application:
+    name: customer-service
+  data:
+    mongodb:
+      host: localhost
+      port: 27017
+      database: customer
+      username: Ebo
+      password: E1b2o3
+      authentication-database: admin
